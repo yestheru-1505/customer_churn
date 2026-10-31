@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10172b">
+  <title>Signal | Customer churn intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #f5f7fb;
+      --surface: #fff;
+      --surface-soft: #f8f9fd;
+      --ink: #17213a;
+      --muted: #748099;
+      --line: #e7eaf1;
+      --panel-blue: #f1f4ff;
+      --panel-mint: #eaf8f5;
+      --panel-violet: #f5f0ff;
+      --panel-peach: #fff3ec;
+      --panel-sky: #edf7ff;
+      --panel-lemon: #fff8e9;
+      --gridline: #edf0f5;
+      --table-head: #f3f5fa;
+      --badge-bg: #fff0f2;
+      --badge-text: #a9364e;
+      --tooltip-bg: #17213a;
+      --tooltip-text: #fff;
+      --note-bg: #fffbf2;
+      --note-text: #72644a;
+      --hero-ink: #e4e9ff;
+      --soft-border: #e8ebf3;
+      --navy: #10172b;
+      --blue: #6179f5;
+      --teal: #17a991;
+      --coral: #ef7181;
+      --gold: #efb24f;
+      --violet: #9a7cf8;
+      --shadow: 0 16px 42px rgba(24, 37, 68, .065);
+      font-family: "DM Sans", sans-serif;
+      background: var(--canvas);
+      color: var(--ink);
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --canvas: #101522;
+      --surface: #1a2233;
+      --surface-soft: #222c40;
+      --ink: #ecf1fb;
+      --muted: #a4afc4;
+      --line: #303b50;
+      --panel-blue: #202a46;
+      --panel-mint: #1b3435;
+      --panel-violet: #2b2541;
+      --panel-peach: #38292d;
+      --panel-sky: #1d3040;
+      --panel-lemon: #383323;
+      --gridline: #303b50;
+      --table-head: #263147;
+      --badge-bg: #482d3b;
+      --badge-text: #ffacbd;
+      --tooltip-bg: #f2f5fb;
+      --tooltip-text: #17213a;
+      --note-bg: #332f23;
+      --note-text: #e5d6a9;
+      --hero-ink: #e4e9ff;
+      --soft-border: #303b50;
+      --shadow: 0 16px 42px rgba(0, 0, 0, .22);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); transition: background .2s ease, color .2s ease; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .hero {
+      position: relative; overflow: hidden; color: #fff;
+      background:
+        radial-gradient(ellipse at 82% 18%, rgba(108, 132, 255, .26), transparent 34%),
+        radial-gradient(ellipse at 8% 100%, rgba(29, 185, 157, .15), transparent 31%),
+        linear-gradient(115deg, #10172b 0%, #172344 64%, #222b57 100%);
+      padding: 27px max(22px, calc((100vw - 1320px) / 2)) 33px;
+    }
+    .hero::after {
+      content: ""; position: absolute; width: 310px; height: 310px; right: 12%; top: -225px;
+      border: 1px solid rgba(255,255,255,.1); border-radius: 50%;
+      box-shadow: 0 0 0 32px rgba(255,255,255,.025), 0 0 0 66px rgba(255,255,255,.02);
+      pointer-events: none;
+    }
+    .hero-top, .hero-main { position: relative; z-index: 1; }
+    .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: Manrope, sans-serif; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { width: 29px; height: 29px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(140deg, #7d8fff, #48cfb5); font-size: 15px; color: #10172b; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .theme-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--hero-ink); background: #ffffff10; border: 1px solid #ffffff25; border-radius: 9px; padding: 9px 11px; font-size: 11px; font-weight: 700; }
+    .theme-toggle:hover { background: #ffffff1b; }
+    .currency-select { color: #e4e9ff; background: #ffffff10; border: 1px solid #ffffff25; border-radius: 9px; padding: 9px 11px; outline: none; }
+    .currency-select option { color: #17213a; }
+    .upload-button {
+      display: inline-flex; gap: 8px; align-items: center; border: 0; border-radius: 10px;
+      padding: 10px 15px; background: #fff; color: #182440; font-weight: 700;
+      box-shadow: 0 8px 20px #0002; transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .upload-button:hover { transform: translateY(-1px); box-shadow: 0 11px 24px #0003; }
+    .upload-button input { display: none; }
+    .hero-main { padding-top: 37px; max-width: 760px; }
+    .eyebrow { color: #aab8ff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; }
+    h1 { margin: 9px 0 10px; font-family: Manrope, sans-serif; font-size: clamp(32px, 5vw, 48px); line-height: 1.08; letter-spacing: -.055em; }
+    .hero-copy { margin: 0; max-width: 690px; color: #c6cee3; line-height: 1.65; font-size: 14px; }
+    .hero-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .hero-badge { border: 1px solid #ffffff20; background: #ffffff0c; color: #e0e5f4; padding: 7px 10px; border-radius: 999px; font-size: 11px; }
+    main { max-width: 1320px; margin: auto; padding: 22px 22px 48px; }
+    .toolbar { min-height: 38px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 15px; }
+    .toolbar-left { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); padding: 7px 10px; border-radius: 999px; color: #59647a; font-size: 11px; font-weight: 600; }
+    .status { color: var(--muted); font-size: 12px; }
+    .status.ready { color: #167d68; }
+    .status.error { color: #bb3d52; }
+    .layout { display: grid; gap: 15px; }
+    .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 15px; }
+    .card { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .metric { padding: 17px 18px; position: relative; overflow: hidden; background: linear-gradient(145deg, var(--metric-tint, var(--surface)), var(--surface) 92%); }
+    .metrics .metric:nth-child(1) { --metric-tint: var(--panel-blue); }
+    .metrics .metric:nth-child(2) { --metric-tint: var(--panel-peach); }
+    .metrics .metric:nth-child(3) { --metric-tint: var(--panel-mint); }
+    .metrics .metric:nth-child(4) { --metric-tint: var(--panel-lemon); }
+    .metric::after { content: ""; position: absolute; top: -24px; right: -24px; width: 80px; height: 80px; border-radius: 50%; background: var(--tint, #6179f510); }
+    .metric-label { position: relative; z-index: 1; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .025em; }
+    .metric-value { position: relative; z-index: 1; margin: 9px 0 4px; font-family: Manrope, sans-serif; font-weight: 800; font-size: clamp(24px, 3vw, 33px); letter-spacing: -.045em; }
+    .metric-note { position: relative; z-index: 1; color: var(--muted); font-size: 11px; }
+    .metric-dot { display: inline-block; vertical-align: 1px; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--accent, var(--blue)); }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 14px; margin: 25px 1px 12px; }
+    .section-heading h2 { margin: 0; font: 800 17px Manrope, sans-serif; letter-spacing: -.03em; }
+    .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .section-kicker { color: #8a94a9; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .chart-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+    .chart-card { grid-column: span 6; padding: 17px 17px 12px; background: linear-gradient(145deg, var(--card-tint, var(--surface)), var(--surface) 82%); }
+    .chart-grid .chart-card:nth-child(6n + 1) { --card-tint: var(--panel-blue); }
+    .chart-grid .chart-card:nth-child(6n + 2) { --card-tint: var(--panel-mint); }
+    .chart-grid .chart-card:nth-child(6n + 3) { --card-tint: var(--panel-violet); }
+    .chart-grid .chart-card:nth-child(6n + 4) { --card-tint: var(--panel-peach); }
+    .chart-grid .chart-card:nth-child(6n + 5) { --card-tint: var(--panel-sky); }
+    .chart-grid .chart-card:nth-child(6n) { --card-tint: var(--panel-lemon); }
+    .chart-card.third { grid-column: span 4; }
+    .chart-card.wide { grid-column: span 8; }
+    .chart-card.full { grid-column: span 12; }
+    .chart-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; min-height: 41px; margin-bottom: 7px; }
+    .chart-title { margin: 0 0 4px; font: 700 13px Manrope, sans-serif; }
+    .chart-subtitle { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .chart-index { flex: 0 0 auto; display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; color: #6678d9; background: #f0f2ff; font-size: 10px; font-weight: 800; }
+    .chart-wrap { height: 226px; position: relative; }
+    .chart-wrap.short { height: 194px; }
+    .empty-chart { display: grid; place-items: center; min-height: 155px; padding: 20px; border: 1px dashed #dce1ec; border-radius: 10px; color: var(--muted); text-align: center; font-size: 11px; }
+    .chart-caption { min-height: 31px; margin: 8px 1px 0; color: #66738a; font-size: 10px; line-height: 1.55; }
+    .lower-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; }
+    .table-card, .insight-card, .audit-card { padding: 18px; background: linear-gradient(145deg, var(--panel-blue), var(--surface) 74%); }
+    .insight-card { background: linear-gradient(145deg, var(--panel-violet), var(--surface) 74%); }
+    .audit-card { background: linear-gradient(145deg, var(--panel-mint), var(--surface) 74%); }
+    .card-title { margin: 0 0 4px; font: 700 14px Manrope, sans-serif; }
+    .card-description { margin: 0 0 13px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 10px 9px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    th { color: #8791a5; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    td strong { font-weight: 700; }
+    .rate-badge { display: inline-block; padding: 4px 8px; background: var(--badge-bg); color: var(--badge-text); border-radius: 999px; font-weight: 700; }
+    .uplift { color: #16836d; font-weight: 700; }
+    .uplift.high { color: #c3485a; }
+    .insight-list { display: grid; gap: 9px; }
+    .insight { padding: 11px 12px; border: 1px solid var(--soft-border); border-radius: 11px; background: linear-gradient(110deg, var(--panel-blue), var(--surface)); }
+    .insight:nth-child(4n + 2) { background: linear-gradient(110deg, var(--panel-mint), var(--surface)); }
+    .insight:nth-child(4n + 3) { background: linear-gradient(110deg, var(--panel-violet), var(--surface)); }
+    .insight:nth-child(4n) { background: linear-gradient(110deg, var(--panel-lemon), var(--surface)); }
+    .insight-label { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; font-size: 10px; font-weight: 800; }
+    .insight-icon { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 7px; color: #566adb; background: #eef0ff; font-size: 11px; }
+    .insight-text { color: #66738a; font-size: 10px; line-height: 1.55; }
+    .audit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .audit-stat { background: var(--audit-tint, var(--surface-soft)); border: 1px solid var(--line); border-radius: 10px; padding: 11px; }
+    .audit-stat:nth-child(1) { --audit-tint: var(--panel-blue); }
+    .audit-stat:nth-child(2) { --audit-tint: var(--panel-peach); }
+    .audit-stat:nth-child(3) { --audit-tint: var(--panel-violet); }
+    .audit-stat:nth-child(4) { --audit-tint: var(--panel-lemon); }
+    .audit-stat b { display: block; margin-top: 5px; font: 700 17px Manrope, sans-serif; }
+    .audit-stat span { color: var(--muted); font-size: 9px; }
+    .audit-list { margin: 12px 0 0; padding-left: 17px; color: #66738a; font-size: 10px; line-height: 1.8; }
+    .heatmap { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 9px; }
+    .heatmap th, .heatmap td { border: 0; border-radius: 6px; padding: 8px 7px; text-align: center; white-space: normal; }
+    .heatmap th { background: #f3f5fa; color: #66738a; font-size: 8px; }
+    .heatmap .row-label { text-align: left; min-width: 90px; }
+    .method-note { margin-top: 14px; padding: 11px 12px; border-left: 3px solid var(--gold); border-radius: 0 9px 9px 0; background: var(--note-bg); color: var(--note-text); font-size: 10px; line-height: 1.6; }
+    .empty-state { padding: 27px 19px; margin-bottom: 14px; background: linear-gradient(115deg,var(--panel-blue),var(--surface)); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .empty-title { margin: 0 0 6px; font: 800 16px Manrope, sans-serif; }
+    .empty-copy { max-width: 780px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .empty-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+    .empty-chips span { padding: 7px 9px; background: var(--panel-violet); border-radius: 8px; color: var(--ink); font-size: 10px; font-weight: 600; }
+    .notice { margin: 12px 0; padding: 11px 13px; border: 1px solid #f2dfb6; border-radius: 10px; background: var(--note-bg); color: var(--note-text); font-size: 10px; line-height: 1.55; }
+    .error-box { display: none; margin: 10px 0; padding: 11px 13px; border-radius: 10px; border: 1px solid #f1c8cf; background: #fff5f6; color: #a33145; font-size: 11px; }
+    .footer { margin: 18px 0 0; color: #929bad; text-align: center; font-size: 9px; line-height: 1.7; }
+    [data-theme="dark"] .hero { border-bottom: 1px solid #ffffff12; }
+    [data-theme="dark"] .chart-index { color: #c3ccff; background: #394568; }
+    [data-theme="dark"] .empty-chart { border-color: var(--line); }
+    [data-theme="dark"] .error-box { background: #3a222d; border-color: #613346; color: #ffb9c6; }
+    [data-theme="dark"] .notice { border-color: #665531; }
+    [data-theme="dark"] .heatmap th { background: var(--table-head) !important; color: var(--ink) !important; }
+    [data-theme="dark"] #fieldControls select { color: var(--ink) !important; background: var(--surface) !important; border-color: var(--line) !important; }
+    [data-theme="dark"] #fieldControls > div { color: var(--muted) !important; }
+    [data-theme="dark"] #fieldControls label { color: var(--muted) !important; }
+    [hidden] { display: none !important; }
+    @media(max-width: 920px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-card.third, .chart-card.wide, .chart-card.full { grid-column: span 6; }
+      .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media(max-width: 610px) {
+      .hero { padding: 19px 16px 25px; }
+      .hero-top { align-items: flex-start; }
+      .top-actions { flex-direction: column-reverse; align-items: stretch; }
+      .currency-select, .upload-button { justify-content: center; }
+      .hero-main { padding-top: 28px; }
+      main { padding: 14px 12px 32px; }
+      .metrics { gap: 9px; }
+      .metric { padding: 13px; }
+      .chart-grid { gap: 10px; }
+      .chart-card, .chart-card.third, .chart-card.wide, .chart-card.full { grid-column: span 12; }
+      .chart-wrap { height: 210px; }
+      .audit-grid { grid-template-columns: repeat(2, 1fr); }
+      .section-heading { align-items: start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand"><span class="brand-mark">S</span><span>SIGNAL <span style="font-weight:500;opacity:.65">/ INSIGHT STUDIO</span></span></div>
+      <div class="top-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark color mode" aria-pressed="false">☾ <span>Dark mode</span></button>
+        <select id="currency" class="currency-select" aria-label="Currency display">
+          <option value="unit">Currency: data units</option>
+          <option value="INR">Currency: INR ₹</option>
+          <option value="USD">Currency: USD $</option>
+        </select>
+        <label class="upload-button">＋ Upload customer CSV<input id="file" type="file" accept=".csv,text/csv"></label>
+      </div>
+    </div>
+    <div class="hero-main">
+      <div class="eyebrow">Hackathon · Exploratory data analysis</div>
+      <h1>Customer churn,<br>made clear.</h1>
+      <p class="hero-copy">A decision-ready view of who is leaving, when it happens, and which observed customer segments are worth investigating first.</p>
+      <div class="hero-badges">
+        <span class="hero-badge">01 &nbsp; Evidence over assumptions</span>
+        <span class="hero-badge">02 &nbsp; Sample sizes beside rates</span>
+        <span class="hero-badge">03 &nbsp; EDA only · No prediction</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="pill">●&nbsp; NumPy + Pandas analysis workflow</span>
+        <span class="pill">●&nbsp; Matplotlib / Seaborn chart coverage</span>
+        <span class="pill">●&nbsp; No customer data is sent to a server</span>
+      </div>
+      <span class="status" id="status" aria-live="polite">Challenge brief ready · Upload the team's CSV to begin.</span>
+    </div>
+
+    <div id="error" class="error-box" role="alert"></div>
+    <section id="empty" class="empty-state">
+      <h2 class="empty-title">Your competition dashboard is ready</h2>
+      <p class="empty-copy">Start with the team's customer churn CSV. The dashboard will inspect data quality, calculate the churn baseline, compare customer segments, estimate monthly charges at risk, and produce evidence-linked discussion prompts. No customer metrics are fabricated before a file is uploaded.</p>
+      <div class="empty-chips">
+        <span>01 · Clean & validate</span><span>02 · Measure churn</span><span>03 · Explore tenure</span>
+        <span>04 · Compare plans</span><span>05 · Review services</span><span>06 · Quantify charges</span>
+        <span>07 · Compare profiles</span><span>08 · Present recommendations</span>
+      </div>
+      <div class="notice">The challenge asks for at least 10 interpreted visualisations. Charts appear when their source columns are available; every displayed percentage includes its customer count in the chart tooltip or segment table.</div>
+    </section>
+
+    <section id="dashboard" hidden>
+      <section class="layout metrics" aria-label="Key metrics">
+        <article class="card metric" style="--accent:var(--blue);--tint:#6179f512">
+          <div class="metric-label"><span class="metric-dot"></span>Customers analyzed</div>
+          <div class="metric-value" id="total">—</div><div class="metric-note" id="total-note">Valid churn labels</div>
+        </article>
+        <article class="card metric" style="--accent:var(--coral);--tint:#ef718115">
+          <div class="metric-label"><span class="metric-dot"></span>Overall churn rate</div>
+          <div class="metric-value" id="rate">—</div><div class="metric-note" id="churn-count">—</div>
+        </article>
+        <article class="card metric" style="--accent:var(--teal);--tint:#17a99114">
+          <div class="metric-label"><span class="metric-dot"></span>Monthly charges at risk</div>
+          <div class="metric-value" id="risk">—</div><div class="metric-note" id="risk-share">—</div>
+        </article>
+        <article class="card metric" style="--accent:var(--gold);--tint:#efb24f18">
+          <div class="metric-label"><span class="metric-dot"></span>Avg. monthly charges</div>
+          <div class="metric-value" id="avg">—</div><div class="metric-note" id="avg-note">Across valid customer rows</div>
+        </article>
+      </section>
+
+      <div class="section-heading">
+        <div><div class="section-kicker">The executive view</div><h2>Start with the signal</h2><p>Customer mix and the most useful lifecycle, commercial, and service comparisons.</p></div>
+        <span class="pill" id="file-meta">CSV analysis</span>
+      </div>
+      <section class="chart-grid">
+        <article class="card chart-card third">
+          <div class="chart-head"><div><h3 class="chart-title">Customer outcome mix</h3><p class="chart-subtitle">Churned versus retained</p></div><span class="chart-index">01</span></div>
+          <div class="chart-wrap short"><canvas id="splitChart"></canvas></div><p class="chart-caption" id="split-note"></p>
+        </article>
+        <article class="card chart-card third">
+          <div class="chart-head"><div><h3 class="chart-title">Churn by tenure</h3><p class="chart-subtitle">Lifecycle group · rate and n</p></div><span class="chart-index">02</span></div>
+          <div class="chart-wrap short"><canvas id="tenureChart"></canvas></div><p class="chart-caption" id="tenure-note"></p>
+        </article>
+        <article class="card chart-card third">
+          <div class="chart-head"><div><h3 class="chart-title">Churn by contract</h3><p class="chart-subtitle">Commercial setup comparison</p></div><span class="chart-index">03</span></div>
+          <div class="chart-wrap short"><canvas id="contractChart"></canvas></div><p class="chart-caption" id="contract-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Churn by payment method</h3><p class="chart-subtitle">Within-method churn rate; tooltip includes segment size</p></div><span class="chart-index">04</span></div>
+          <div class="chart-wrap"><canvas id="paymentChart"></canvas></div><p class="chart-caption" id="payment-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Churn by internet service</h3><p class="chart-subtitle">Service category comparison</p></div><span class="chart-index">05</span></div>
+          <div class="chart-wrap"><canvas id="internetChart"></canvas></div><p class="chart-caption" id="internet-note"></p>
+        </article>
+      </section>
+
+      <div class="section-heading">
+        <div><div class="section-kicker">Commercial & product signals</div><h2>Compare customer setups</h2><p>These are observed differences between groups—not proven explanations for churn.</p></div>
+      </div>
+      <section class="chart-grid">
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Paperless billing</h3><p class="chart-subtitle">Observed churn by billing preference</p></div><span class="chart-index">06</span></div>
+          <div class="chart-wrap"><canvas id="paperlessChart"></canvas></div><p class="chart-caption" id="paperless-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Monthly charges by outcome</h3><p class="chart-subtitle">Mean monthly charge · not total customer value</p></div><span class="chart-index">07</span></div>
+          <div class="chart-wrap"><canvas id="chargesChart"></canvas></div><p class="chart-caption" id="charges-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Add-on count and churn</h3><p class="chart-subtitle">Number of listed add-ons per customer</p></div><span class="chart-index">08</span></div>
+          <div class="chart-wrap"><canvas id="addonsChart"></canvas></div><p class="chart-caption" id="addons-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Monthly charge distribution</h3><p class="chart-subtitle">Charge bands compared by churn outcome</p></div><span class="chart-index">09</span></div>
+          <div class="chart-wrap"><canvas id="distributionChart"></canvas></div><p class="chart-caption" id="distribution-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Customer profile · gender</h3><p class="chart-subtitle">Rate and sample size by category</p></div><span class="chart-index">10</span></div>
+          <div class="chart-wrap"><canvas id="genderChart"></canvas></div><p class="chart-caption" id="gender-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Customer profile · senior citizen</h3><p class="chart-subtitle">Rate and sample size by category</p></div><span class="chart-index">11</span></div>
+          <div class="chart-wrap"><canvas id="seniorChart"></canvas></div><p class="chart-caption" id="senior-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Total charges by outcome</h3><p class="chart-subtitle">Mean cumulative charges among each outcome group</p></div><span class="chart-index">12</span></div>
+          <div class="chart-wrap"><canvas id="totalChargesChart"></canvas></div><p class="chart-caption" id="total-charges-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Customer profile · partner</h3><p class="chart-subtitle">Rate and sample size by category</p></div><span class="chart-index">13</span></div>
+          <div class="chart-wrap"><canvas id="partnerChart"></canvas></div><p class="chart-caption" id="partner-note"></p>
+        </article>
+        <article class="card chart-card">
+          <div class="chart-head"><div><h3 class="chart-title">Customer profile · dependents</h3><p class="chart-subtitle">Rate and sample size by category</p></div><span class="chart-index">14</span></div>
+          <div class="chart-wrap"><canvas id="dependentsChart"></canvas></div><p class="chart-caption" id="dependents-note"></p>
+        </article>
+        <article class="card chart-card full">
+          <div class="chart-head"><div><h3 class="chart-title">Correlation snapshot</h3><p class="chart-subtitle">Pairwise Pearson correlations for numeric measures and churn encoding</p></div><span class="chart-index">15</span></div>
+          <div class="table-wrap" id="correlation"></div>
+          <p class="chart-caption">Correlation describes linear association in this sample. It cannot establish why customers leave; other customer and operational variables may shape the pattern.</p>
+        </article>
+      </section>
+
+      <div class="section-heading">
+        <div><div class="section-kicker">From chart to decision</div><h2>Prioritize with evidence</h2><p>Rates are ranked alongside the number of people affected, with the overall rate as a benchmark.</p></div>
+        <button id="download" class="pill" type="button">↓ Download cleaned analysis CSV</button>
+      </div>
+      <section class="lower-grid">
+        <article class="card table-card">
+          <h3 class="card-title">Highest-risk segments to investigate</h3>
+          <p class="card-description">Top three segments with at least 25 customers and churn above the overall benchmark; sample counts stay visible beside rates.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Segment</th><th>Customers (n)</th><th>Churned</th><th>Churn rate</th><th>vs overall</th></tr></thead>
+              <tbody id="riskTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card insight-card">
+          <h3 class="card-title">Discussion prompts</h3>
+          <p class="card-description">Use the observed differences to decide what to validate next.</p>
+          <div class="insight-list" id="insights"></div>
+        </article>
+      </section>
+
+      <div class="section-heading">
+        <div><div class="section-kicker">Trust the data</div><h2>Quality, assumptions & limitations</h2><p>Make the cleaning choices visible before presenting a recommendation.</p></div>
+      </div>
+      <section class="card audit-card">
+        <div class="audit-grid">
+          <div class="audit-stat"><span>Rows in CSV</span><b id="auditRows">—</b></div>
+          <div class="audit-stat"><span>Exact duplicate rows</span><b id="auditDuplicates">—</b></div>
+          <div class="audit-stat"><span>Invalid/missing churn labels</span><b id="auditInvalid">—</b></div>
+          <div class="audit-stat"><span>Missing cells in raw file</span><b id="auditMissing">—</b></div>
+        </div>
+        <ul class="audit-list" id="cleaningLog"></ul>
+        <div class="method-note">Churn rates are calculated among rows with recognized Yes/No labels. Numeric blanks or invalid strings are excluded only from calculations that need those numeric fields. Revenue at risk is the sum of available monthly charges for churned customers. This is a descriptive estimate, not a forecast. Segment patterns do not prove causes or that an intervention will reduce churn.</div>
+      </section>
+    </section>
+
+    <p class="footer">SIGNAL · CUSTOMER CHURN EDA &nbsp;·&nbsp; Built for evidence-led analysis &nbsp;·&nbsp; Upload a CSV you are authorized to analyze.</p>
+  </main>
+
+  <script>
+    "use strict";
+    const PALETTE = { blue: "#6179f5", teal: "#17a991", coral: "#ef7181", gold: "#efb24f", violet: "#9a7cf8", sky: "#35a9d8", indigo: "#5265c8", rose: "#d85a9b", lime: "#7fae4a", gray: "#a6afbf", ink: "#17213a", muted: "#748099" };
+    const SEGMENT_COLORS = [PALETTE.blue, PALETTE.teal, PALETTE.violet, PALETTE.gold, PALETTE.coral, PALETTE.sky, PALETTE.rose, PALETTE.lime];
+    const ADDON_NAMES = ["OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies", "PhoneService", "MultipleLines"];
+    const MIN_SEGMENT_SIZE = 25;
+    const ALIASES = {
+      churn: ["Churn", "Exited", "Customer Churn", "Churn status"],
+      tenure: ["tenure", "Tenure Months", "Tenure (months)", "Months"],
+      contract: ["Contract", "Contract Type"],
+      payment: ["PaymentMethod", "Payment Method"],
+      paperless: ["PaperlessBilling", "Paperless Billing"],
+      internet: ["InternetService", "Internet Service"],
+      monthly: ["MonthlyCharges", "Monthly Charges", "Monthly_Charges"],
+      total: ["TotalCharges", "Total Charges", "Total_Charges"],
+      gender: ["gender", "sex"],
+      senior: ["SeniorCitizen", "Senior Citizen", "Senior"],
+      partner: ["Partner"],
+      dependents: ["Dependents"],
+      customerId: ["customerID", "CustomerID", "Customer ID", "customer_id", "id"]
+    };
+    const charts = {};
+    let activeDataset = null;
+    let activeCurrency = "unit";
+    let parsedRows = [];
+    let fieldSelects = {};
+    const $ = (id) => document.getElementById(id);
+    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const countFmt = (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const pctFmt = (value) => `${(Number(value) * 100).toFixed(1)}%`;
+    const normalized = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const currencySymbols = { INR: "₹", USD: "$" };
+
+    function setStatus(message, kind = "") {
+      $("status").textContent = message;
+      $("status").className = `status ${kind}`.trim();
+    }
+
+    function setError(message) {
+      $("error").textContent = message;
+      $("error").style.display = message ? "block" : "none";
+    }
+
+    function detectColumn(headers, aliases) {
+      const byNormalized = new Map(headers.map((header) => [normalized(header), header]));
+      for (const alias of aliases) {
+        const found = byNormalized.get(normalized(alias));
+        if (found) return found;
+      }
+      return "";
+    }
+
+    function parseNumber(value) {
+      if (value === null || value === undefined || String(value).trim() === "") return NaN;
+      const cleaned = String(value).trim().replace(/[$,₹€£\s]/g, "");
+      if (!cleaned) return NaN;
+      const parsed = Number(cleaned);
+      return Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    function churnValue(value) {
+      const label = String(value ?? "").trim().toLowerCase();
+      if (["yes", "y", "true", "1", "churned", "exited"].includes(label)) return 1;
+      if (["no", "n", "false", "0", "retained", "active"].includes(label)) return 0;
+      return null;
+    }
+
+    function formatMoney(value) {
+      if (!Number.isFinite(value)) return "—";
+      if (activeCurrency === "unit") return `${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} units`;
+      return `${currencySymbols[activeCurrency]}${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    }
+
+    function setTheme(theme, rerender = true) {
+      const selected = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = selected;
+      const button = $("themeToggle");
+      if (button) {
+        const dark = selected === "dark";
+        button.innerHTML = `${dark ? "☀" : "☾"} <span>${dark ? "Light mode" : "Dark mode"}</span>`;
+        button.setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} color mode`);
+        button.setAttribute("aria-pressed", String(dark));
+      }
+      try {
+        localStorage.setItem("signal-color-mode", selected);
+      } catch {
+        // The dashboard still works when browser storage is disabled.
+      }
+      if (rerender && parsedRows.length) processRows();
+    }
+
+    function initialTheme() {
+      try {
+        return localStorage.getItem("signal-color-mode") || "light";
+      } catch {
+        return "light";
+      }
+    }
+
+    function safeText(value) {
+      const element = document.createElement("span");
+      element.textContent = String(value ?? "");
+      return element.innerHTML;
+    }
+
+    function fieldMap(headers) {
+      const selected = {};
+      for (const [field, aliases] of Object.entries(ALIASES)) selected[field] = detectColumn(headers, aliases);
+      for (const [field, element] of Object.entries(fieldSelects)) {
+        if (element && element.value) selected[field] = element.value;
+      }
+      return selected;
+    }
+
+    function ensureFieldControls(headers) {
+      const map = fieldMap(headers);
+      const fields = [
+        ["churn", "Churn target (required)"],
+        ["tenure", "Tenure (months)"],
+        ["contract", "Contract"],
+        ["payment", "Payment method"],
+        ["paperless", "Paperless billing"],
+        ["internet", "Internet service"],
+        ["monthly", "Monthly charges"],
+        ["total", "Total charges"],
+        ["gender", "Gender"],
+        ["senior", "Senior citizen"],
+        ["partner", "Partner"],
+        ["dependents", "Dependents"]
+      ];
+      let host = $("fieldControls");
+      if (!host) {
+        host = document.createElement("div");
+        host.id = "fieldControls";
+        host.className = "card";
+        host.style.cssText = "padding:13px 15px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px";
+        const firstHeading = document.querySelector(".section-heading");
+        $("dashboard").insertBefore(host, firstHeading);
+      }
+      host.replaceChildren();
+      const label = document.createElement("div");
+      label.style.cssText = "grid-column:1/-1;color:#748099;font-size:10px;font-weight:700";
+      label.textContent = "Confirm detected columns · change any mapping if your CSV uses different names";
+      host.appendChild(label);
+      fieldSelects = {};
+      for (const [key, title] of fields) {
+        const wrap = document.createElement("label");
+        wrap.style.cssText = "display:grid;gap:4px;color:#748099;font-size:9px;font-weight:700";
+        const caption = document.createElement("span");
+        caption.textContent = title;
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", title);
+        select.style.cssText = "min-width:0;width:100%;padding:8px;border:1px solid #e7eaf1;border-radius:8px;background:#fff;color:#17213a;font-size:10px";
+        const noneOption = document.createElement("option");
+        noneOption.value = "";
+        noneOption.textContent = "Not mapped";
+        select.appendChild(noneOption);
+        headers.forEach((header) => {
+          const option = document.createElement("option");
+          option.value = header;
+          option.textContent = header;
+          select.appendChild(option);
+        });
+        select.value = map[key] || "";
+        select.addEventListener("change", () => processRows());
+        wrap.append(caption, select);
+        host.appendChild(wrap);
+        fieldSelects[key] = select;
+      }
+    }
+
+    function exactDuplicateCount(rows, headers) {
+      const seen = new Set();
+      let duplicates = 0;
+      for (const row of rows) {
+        const signature = JSON.stringify(headers.map((header) => row[header] ?? ""));
+        if (seen.has(signature)) duplicates += 1;
+        else seen.add(signature);
+      }
+      return duplicates;
+    }
+
+    function classifyChurnRows(rows, columns) {
+      return rows.map((row) => ({
+        ...row,
+        _churn: churnValue(row[columns.churn]),
+        _monthly: columns.monthly ? parseNumber(row[columns.monthly]) : NaN,
+        _tenure: columns.tenure ? parseNumber(row[columns.tenure]) : NaN
+      }));
+    }
+
+    function groupStats(rows, column, labelFn = (value) => value) {
+      if (!column) return [];
+      const groups = new Map();
+      for (const row of rows) {
+        if (row._churn === null) continue;
+        const raw = row[column];
+        if (raw === null || raw === undefined || String(raw).trim() === "") continue;
+        const name = String(labelFn(raw));
+        if (!groups.has(name)) groups.set(name, { name, n: 0, churned: 0, chargeSum: 0, chargeN: 0 });
+        const group = groups.get(name);
+        group.n += 1;
+        group.churned += row._churn;
+        if (Number.isFinite(row._monthly)) {
+          group.chargeSum += row._monthly;
+          group.chargeN += 1;
+        }
+      }
+      return [...groups.values()].map((group) => ({
+        ...group,
+        rate: group.n ? group.churned / group.n : 0,
+        avgCharge: group.chargeN ? group.chargeSum / group.chargeN : NaN
+      }));
+    }
+
+    function setChartNote(id, text) {
+      const target = $(id);
+      if (target) target.textContent = text;
+    }
+
+    function destroyChart(id) {
+      if (charts[id]) {
+        charts[id].destroy();
+        delete charts[id];
+      }
+    }
+
+    function emptyChart(id, noteId, message) {
+      destroyChart(id);
+      const canvas = $(id);
+      if (canvas) {
+        canvas.hidden = true;
+        const parent = canvas.parentElement;
+        let empty = parent.querySelector(".empty-chart");
+        if (!empty) {
+          empty = document.createElement("div");
+          empty.className = "empty-chart";
+          parent.appendChild(empty);
+        }
+        empty.textContent = message;
+      }
+      setChartNote(noteId, "Map the matching field above to include this comparison.");
+    }
+
+    function showCanvas(id) {
+      const canvas = $(id);
+      if (!canvas) return null;
+      canvas.hidden = false;
+      const empty = canvas.parentElement.querySelector(".empty-chart");
+      if (empty) empty.remove();
+      return canvas;
+    }
+
+    function chartOptions(percent = true) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: "index" },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: cssVar("--tooltip-bg") || "#17213a",
+            titleColor: cssVar("--tooltip-text") || "#fff",
+            bodyColor: cssVar("--tooltip-text") || "#fff",
+            padding: 10,
+            titleFont: { family: "DM Sans", size: 11, weight: "700" },
+            bodyFont: { family: "DM Sans", size: 10 },
+            callbacks: {
+              label: (context) => {
+                const raw = context.raw;
+                const value = typeof raw === "object" && raw !== null ? raw.y : raw;
+                const sample = context.dataset.sampleSizes?.[context.dataIndex];
+                const head = `${context.dataset.label || "Value"}: ${percent ? `${Number(value).toFixed(1)}%` : formatMoney(Number(value))}`;
+                return sample === undefined ? head : `${head} · n=${countFmt(sample)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: cssVar("--muted") || PALETTE.muted, font: { family: "DM Sans", size: 9 } } },
+          y: { beginAtZero: true, border: { display: false }, grid: { color: cssVar("--gridline") || "#edf0f5" }, ticks: { color: cssVar("--muted") || PALETTE.muted, font: { family: "DM Sans", size: 9 }, callback: (value) => percent ? `${value}%` : value } }
+        }
+      };
+    }
+
+    function renderRateChart(id, noteId, stats, overall, emptyMessage = "Map this field to show segment churn rates.") {
+      if (!stats.length) return emptyChart(id, noteId, emptyMessage);
+      const canvas = showCanvas(id);
+      destroyChart(id);
+      const sorted = [...stats].sort((a, b) => b.rate - a.rate);
+      charts[id] = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: sorted.map((item) => item.name),
+          datasets: [
+            {
+              label: "Churn rate",
+              data: sorted.map((item) => +(item.rate * 100).toFixed(2)),
+              sampleSizes: sorted.map((item) => item.n),
+              backgroundColor: sorted.map((_, index) => SEGMENT_COLORS[index % SEGMENT_COLORS.length]),
+              borderColor: sorted.map((item) => item.rate > overall ? PALETTE.coral : "transparent"),
+              borderWidth: sorted.map((item) => item.rate > overall ? 2 : 0),
+              borderRadius: 6,
+              maxBarThickness: 45
+            }
+          ]
+        },
+        options: {
+          ...chartOptions(true),
+          plugins: {
+            ...chartOptions(true).plugins,
+            tooltip: {
+              ...chartOptions(true).plugins.tooltip,
+              callbacks: {
+                label: (context) => `Churn: ${sorted[context.dataIndex].rate.toLocaleString(undefined, { style: "percent", maximumFractionDigits: 1 })} · ${countFmt(sorted[context.dataIndex].churned)} of ${countFmt(sorted[context.dataIndex].n)}`
+              }
+            }
+          }
+        }
+      });
+      const high = sorted[0];
+      const all = [...stats].sort((a, b) => b.n - a.n)[0];
+      setChartNote(noteId, `Highest: ${high.name} (${pctFmt(high.rate)}, n=${countFmt(high.n)}). Largest group: ${all.name} (n=${countFmt(all.n)}). Overall: ${pctFmt(overall)}.`);
+    }
+
+    function renderSplit(rows, churned, retained, rate) {
+      const canvas = showCanvas("splitChart");
+      destroyChart("splitChart");
+      charts.splitChart = new Chart(canvas, {
+        type: "doughnut",
+        data: {
+          labels: ["Churned", "Retained"],
+          datasets: [{ data: [churned, retained], backgroundColor: [PALETTE.coral, PALETTE.sky], borderWidth: 0, hoverOffset: 5 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: "72%",
+          plugins: {
+            legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, color: cssVar("--muted") || PALETTE.muted, font: { family: "DM Sans", size: 10 } } },
+            tooltip: { callbacks: { label: (context) => `${context.label}: ${countFmt(context.raw)} customers (${pctFmt(rows ? context.raw / rows : 0)})` } }
+          }
+        }
+      });
+      setChartNote("split-note", `${countFmt(churned)} churned · ${countFmt(retained)} retained · overall observed churn ${pctFmt(rate)}.`);
+    }
+
+    function tenureGroup(value) {
+      if (!Number.isFinite(value) || value < 0) return null;
+      if (value <= 12) return "0–12 months";
+      if (value <= 24) return "13–24 months";
+      if (value <= 48) return "25–48 months";
+      if (value <= 72) return "49–72 months";
+      return "73+ months";
+    }
+
+    function renderCharges(rows, columns) {
+      if (!columns.monthly) {
+        emptyChart("chargesChart", "charges-note", "No monthly charge column was detected.");
+        emptyChart("distributionChart", "distribution-note", "No monthly charge column was detected.");
+        return;
+      }
+      const outcomes = [
+        { name: "Churned", value: 1, color: PALETTE.coral },
+        { name: "Retained", value: 0, color: PALETTE.teal }
+      ];
+      const means = outcomes.map((outcome) => {
+        const values = rows.filter((row) => row._churn === outcome.value && Number.isFinite(row._monthly)).map((row) => row._monthly);
+        return { ...outcome, mean: values.length ? values.reduce((sum, item) => sum + item, 0) / values.length : NaN, n: values.length };
+      });
+      if (!means.some((item) => Number.isFinite(item.mean))) {
+        emptyChart("chargesChart", "charges-note", "No valid monthly charge values are available.");
+      } else {
+        const canvas = showCanvas("chargesChart");
+        destroyChart("chargesChart");
+        charts.chargesChart = new Chart(canvas, {
+          type: "bar",
+          data: { labels: means.map((item) => item.name), datasets: [{ label: "Mean monthly charges", data: means.map((item) => item.mean), sampleSizes: means.map((item) => item.n),           backgroundColor: means.map((item, index) => SEGMENT_COLORS[index]), borderRadius: 6, maxBarThickness: 70 }] },
+          options: chartOptions(false)
+        });
+        setChartNote("charges-note", `Average monthly charge: churned ${formatMoney(means[0].mean)} (n=${countFmt(means[0].n)}); retained ${formatMoney(means[1].mean)} (n=${countFmt(means[1].n)}).`);
+      }
+      const valid = rows.filter((row) => row._churn !== null && Number.isFinite(row._monthly));
+      if (!valid.length) return emptyChart("distributionChart", "distribution-note", "No valid monthly charge values are available.");
+      const values = valid.map((row) => row._monthly);
+      const min = Math.min(...values), max = Math.max(...values);
+      const binCount = Math.min(7, Math.max(3, Math.ceil(Math.sqrt(values.length))));
+      const step = max === min ? 1 : (max - min) / binCount;
+      const bins = Array.from({ length: binCount }, (_, index) => ({
+        label: max === min ? formatMoney(min) : `${Math.round(min + index * step)}–${Math.round(index === binCount - 1 ? max : min + (index + 1) * step)}`,
+        churned: 0, retained: 0
+      }));
+      valid.forEach((row) => {
+        const index = max === min ? 0 : Math.min(binCount - 1, Math.floor((row._monthly - min) / step));
+        if (row._churn === 1) bins[index].churned += 1;
+        else bins[index].retained += 1;
+      });
+      const canvas = showCanvas("distributionChart");
+      destroyChart("distributionChart");
+      const distributionOptions = chartOptions(false);
+      charts.distributionChart = new Chart(canvas, {
+        type: "bar",
+        data: { labels: bins.map((bin) => bin.label), datasets: [{ label: "Churned", data: bins.map((bin) => bin.churned), backgroundColor: PALETTE.coral, borderRadius: 4 }, { label: "Retained", data: bins.map((bin) => bin.retained), backgroundColor: PALETTE.sky, borderRadius: 4 }] },
+        options: {
+          ...distributionOptions,
+          scales: {
+            ...distributionOptions.scales,
+            x: { ...distributionOptions.scales.x, stacked: true },
+            y: { ...distributionOptions.scales.y, stacked: true, ticks: { ...distributionOptions.scales.y.ticks, callback: (value) => countFmt(value) } }
+          },
+          plugins: {
+            ...distributionOptions.plugins,
+            legend: { display: true, position: "bottom", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, color: cssVar("--muted") || PALETTE.muted, font: { family: "DM Sans", size: 9 } } },
+            tooltip: {
+              ...distributionOptions.plugins.tooltip,
+              callbacks: {
+                label: (context) => `${context.dataset.label}: ${countFmt(context.raw)} customers`
+              }
+            }
+          }
+        }
+      });
+      setChartNote("distribution-note", "Customer counts within monthly-charge bands. Compare the mix as well as the segment sizes; overlapping bands are not causal evidence.");
+    }
+
+    function renderTotalCharges(rows, columns) {
+      if (!columns.total) return emptyChart("totalChargesChart", "total-charges-note", "Map a total charges field to include this comparison.");
+      const groups = [
+        { name: "Churned", outcome: 1, color: PALETTE.coral },
+        { name: "Retained", outcome: 0, color: PALETTE.teal }
+      ].map((group) => {
+        const values = rows
+          .filter((row) => row._churn === group.outcome)
+          .map((row) => parseNumber(row[columns.total]))
+          .filter(Number.isFinite);
+        return { ...group, n: values.length, mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : NaN };
+      });
+      if (!groups.some((group) => Number.isFinite(group.mean))) return emptyChart("totalChargesChart", "total-charges-note", "No numeric total-charge values are available.");
+      const canvas = showCanvas("totalChargesChart");
+      destroyChart("totalChargesChart");
+      charts.totalChargesChart = new Chart(canvas, {
+        type: "bar",
+        data: { labels: groups.map((group) => group.name), datasets: [{ label: "Mean total charges", data: groups.map((group) => group.mean), sampleSizes: groups.map((group) => group.n), backgroundColor: groups.map((group, index) => SEGMENT_COLORS[index]), borderRadius: 6, maxBarThickness: 70 }] },
+        options: chartOptions(false)
+      });
+      setChartNote("total-charges-note", `Mean total charges: churned ${formatMoney(groups[0].mean)} (n=${countFmt(groups[0].n)}); retained ${formatMoney(groups[1].mean)} (n=${countFmt(groups[1].n)}). Read with tenure; cumulative bill size reflects time as well as price.`);
+    }
+
+    function numericValue(row, field, columns) {
+      if (field === "Churn outcome") return row._churn;
+      if (field === "Tenure (months)") return row._tenure;
+      if (field === "Monthly charges") return row._monthly;
+      if (field === "Total charges" && columns.total) return parseNumber(row[columns.total]);
+      if (field === "Senior citizen" && columns.senior) {
+        const value = String(row[columns.senior] ?? "").trim().toLowerCase();
+        if (["1", "yes", "true"].includes(value)) return 1;
+        if (["0", "no", "false"].includes(value)) return 0;
+      }
+      return NaN;
+    }
+
+    function pearson(xValues, yValues) {
+      const n = xValues.length;
+      if (n < 2) return NaN;
+      const xMean = xValues.reduce((sum, value) => sum + value, 0) / n;
+      const yMean = yValues.reduce((sum, value) => sum + value, 0) / n;
+      let numerator = 0, xVariance = 0, yVariance = 0;
+      for (let index = 0; index < n; index += 1) {
+        const xDiff = xValues[index] - xMean;
+        const yDiff = yValues[index] - yMean;
+        numerator += xDiff * yDiff;
+        xVariance += xDiff * xDiff;
+        yVariance += yDiff * yDiff;
+      }
+      const denominator = Math.sqrt(xVariance * yVariance);
+      return denominator ? numerator / denominator : NaN;
+    }
+
+    function renderCorrelation(rows, columns) {
+      const possible = [
+        ["Tenure (months)", columns.tenure ? "_tenure" : ""],
+        ["Monthly charges", columns.monthly ? "_monthly" : ""],
+        ["Total charges", columns.total ? columns.total : ""],
+        ["Senior citizen", columns.senior ? columns.senior : ""],
+        ["Churn outcome", "Churn outcome"]
+      ].filter(([, field]) => field);
+      if (possible.length < 2) {
+        $("correlation").innerHTML = '<div class="empty-chart">Map at least two numeric fields, such as tenure, charges, senior citizen, or churn, to show their correlations.</div>';
+        return;
+      }
+      const names = possible.map(([name]) => name);
+      const matrix = names.map(() => names.map(() => NaN));
+      const counts = names.map(() => names.map(() => 0));
+      for (let rowIndex = 0; rowIndex < names.length; rowIndex += 1) {
+        for (let columnIndex = 0; columnIndex < names.length; columnIndex += 1) {
+          const x = [], y = [];
+          for (const row of rows) {
+            const xValue = numericValue(row, names[rowIndex], columns);
+            const yValue = numericValue(row, names[columnIndex], columns);
+            if (Number.isFinite(xValue) && Number.isFinite(yValue)) {
+              x.push(xValue);
+              y.push(yValue);
+            }
+          }
+          counts[rowIndex][columnIndex] = x.length;
+          matrix[rowIndex][columnIndex] = pearson(x, y);
+        }
+      }
+      const header = `<thead><tr><th class="row-label">Measure</th>${names.map((name) => `<th>${safeText(name)}</th>`).join("")}</tr></thead>`;
+      const body = names.map((name, rowIndex) => {
+        const cells = names.map((_, columnIndex) => {
+          const value = matrix[rowIndex][columnIndex];
+          if (!Number.isFinite(value)) return '<td style="background:#f1f3f7;color:#9aa3b4">—</td>';
+          const strength = Math.min(1, Math.abs(value));
+          const background = value >= 0
+            ? `rgba(23,169,145,${(0.10 + strength * 0.38).toFixed(2)})`
+            : `rgba(239,113,129,${(0.10 + strength * 0.38).toFixed(2)})`;
+          const color = strength > 0.55 ? "#fff" : "#334056";
+          return `<td title="Pairwise n=${countFmt(counts[rowIndex][columnIndex])}" style="background:${background};color:${color}">${value.toFixed(2)}<br><span style="font-size:8px;opacity:.8">n=${countFmt(counts[rowIndex][columnIndex])}</span></td>`;
+        }).join("");
+        return `<tr><th class="row-label">${safeText(name)}</th>${cells}</tr>`;
+      }).join("");
+      $("correlation").innerHTML = `<table class="heatmap">${header}<tbody>${body}</tbody></table>`;
+    }
+
+    function renderAddons(rows, headers) {
+      const available = ADDON_NAMES.filter((name) => detectColumn(headers, [name]));
+      if (!available.length) return emptyChart("addonsChart", "addons-note", "No familiar add-on service columns were detected.");
+      const columns = available.map((name) => detectColumn(headers, [name]));
+      const counts = rows.filter((row) => row._churn !== null).map((row) => {
+        let total = 0;
+        for (const column of columns) {
+          const value = String(row[column] ?? "").trim().toLowerCase();
+          if (["yes", "y", "true", "1"].includes(value)) total += 1;
+        }
+        return { _churn: row._churn, _addons: total };
+      });
+      const stats = groupStats(counts, "_addons", (value) => value === 0 ? "0 add-ons" : value === 1 ? "1 add-on" : "2+ add-ons");
+      renderRateChart("addonsChart", "addons-note", stats, activeDataset?.overall || 0);
+      setChartNote("addons-note", `Add-on count is based on ${columns.length} detected service fields. No-service/No values count as not subscribed; compare n and the overall rate.`);
+    }
+
+    function renderRiskTable(rows, columns, overall) {
+      const candidates = [];
+      const addSegments = (field, label, labelFn) => {
+        if (!field) return;
+        groupStats(rows, field, labelFn).forEach((stat) => candidates.push({ ...stat, segment: `${label}: ${stat.name}` }));
+      };
+      addSegments(columns.contract, "Contract");
+      addSegments(columns.payment, "Payment");
+      addSegments(columns.internet, "Internet");
+      addSegments(columns.paperless, "Paperless");
+      addSegments(columns.gender, "Gender");
+      addSegments(columns.senior, "Senior citizen", (value) => {
+        const normalizedValue = String(value).trim().toLowerCase();
+        return ["1", "yes", "true"].includes(normalizedValue) ? "Yes" : ["0", "no", "false"].includes(normalizedValue) ? "No" : value;
+      });
+      if (columns.tenure) addSegments("_tenure", "Tenure", tenureGroup);
+      const eligible = candidates
+        .filter((item) => item.name !== "null" && item.n >= MIN_SEGMENT_SIZE && item.rate > overall)
+        .sort((a, b) => (b.rate - a.rate) || (b.n - a.n))
+        .slice(0, 3);
+      $("riskTable").innerHTML = eligible.length
+        ? eligible.map((item) => `<tr><td><strong>${safeText(item.segment)}</strong></td><td>${countFmt(item.n)}</td><td>${countFmt(item.churned)}</td><td><span class="rate-badge">${pctFmt(item.rate)}</span></td><td><span class="uplift high">+${(100 * (item.rate - overall)).toFixed(1)} pp</span></td></tr>`).join("")
+        : `<tr><td colspan="5">No above-average segment with n ≥ ${MIN_SEGMENT_SIZE} was identified. Review the charts and the minimum sample-size threshold before interpreting small groups.</td></tr>`;
+      return eligible;
+    }
+
+    function renderInsights(rows, columns, overall, segments) {
+      const prompts = [];
+      if (columns.tenure) {
+        const stats = groupStats(rows.map((row) => ({ ...row, _tenureBand: tenureGroup(row._tenure) })).filter((row) => row._tenureBand), "_tenureBand");
+        if (stats.length) {
+          const high = [...stats].sort((a, b) => b.rate - a.rate)[0];
+          prompts.push(["Lifecycle", `${high.name} has the highest observed churn (${pctFmt(high.rate)}, n=${countFmt(high.n)}). Review onboarding, service contacts, and early-life experience before designing a test.`]);
+        }
+      }
+      if (columns.contract) {
+        const stats = groupStats(rows, columns.contract);
+        if (stats.length) {
+          const high = [...stats].sort((a, b) => b.rate - a.rate)[0];
+          prompts.push(["Commercial setup", `${high.name} contracts show ${pctFmt(high.rate)} churn (n=${countFmt(high.n)}). Check group mix and renewal experience; the pattern alone cannot show why customers leave.`]);
+        }
+      }
+      if (segments.length) {
+        const top = segments[0];
+        prompts.push(["Focus with context", `${top.segment} has ${pctFmt(top.rate)} churn, ${countFmt(top.churned)} churned among ${countFmt(top.n)} customers. Compare both rate and reachable customer volume.`]);
+      }
+      prompts.push(["Responsible interpretation", `Overall churn is ${pctFmt(overall)}. These are historical data patterns, not causes or individual predictions. Validate with operational evidence and evaluate actions experimentally.`]);
+      $("insights").innerHTML = prompts.slice(0, 4).map(([label, text], index) => `<div class="insight"><div class="insight-label"><span class="insight-icon">${["↗", "⌕", "◎", "i"][index]}</span>${safeText(label)}</div><div class="insight-text">${safeText(text)}</div></div>`).join("");
+    }
+
+    function renderProfile(rows, column, chartId, noteId, title) {
+      if (!column) return emptyChart(chartId, noteId, `${title} field not detected in this file.`);
+      const stats = groupStats(rows, column, (value) => {
+        if (title === "Senior citizen") {
+          const raw = String(value).trim().toLowerCase();
+          if (["1", "yes", "true"].includes(raw)) return "Yes";
+          if (["0", "no", "false"].includes(raw)) return "No";
+        }
+        return value;
+      });
+      renderRateChart(chartId, noteId, stats, activeDataset?.overall || 0);
+    }
+
+    function processRows() {
+      setError("");
+      if (!parsedRows.length) return;
+      const headers = Object.keys(parsedRows[0] || {});
+      const columns = fieldMap(headers);
+      if (!columns.churn) {
+        setError("Select the column containing the churn Yes/No label.");
+        setStatus("The churn field needs mapping.", "error");
+        return;
+      }
+      const duplicateCount = exactDuplicateCount(parsedRows, headers);
+      const seen = new Set();
+      const deduplicated = parsedRows.filter((row) => {
+        const signature = JSON.stringify(headers.map((header) => row[header] ?? ""));
+        if (seen.has(signature)) return false;
+        seen.add(signature);
+        return true;
+      });
+      const sourceRows = $("dedupeToggle")?.checked ? deduplicated : parsedRows;
+      const rows = classifyChurnRows(sourceRows, columns);
+      const invalid = rows.filter((row) => row._churn === null).length;
+      const valid = rows.filter((row) => row._churn !== null);
+      if (!valid.length) {
+        setError(`No recognized Yes/No labels found in “${columns.churn}”. Check the selected field and its values.`);
+        setStatus("No valid churn labels.", "error");
+        return;
+      }
+      const churned = valid.filter((row) => row._churn === 1).length;
+      const retained = valid.length - churned;
+      const overall = churned / valid.length;
+      const monthlyRows = valid.filter((row) => Number.isFinite(row._monthly));
+      const allMonthly = monthlyRows.reduce((sum, row) => sum + row._monthly, 0);
+      const lostMonthly = monthlyRows.filter((row) => row._churn === 1).reduce((sum, row) => sum + row._monthly, 0);
+      const average = monthlyRows.length ? allMonthly / monthlyRows.length : NaN;
+      const missingCells = parsedRows.reduce((sum, row) => sum + headers.filter((header) => String(row[header] ?? "").trim() === "").length, 0);
+      activeDataset = { rows, columns, overall, churned, retained, lostMonthly, allMonthly };
+
+      $("empty").hidden = true;
+      $("dashboard").hidden = false;
+      $("total").textContent = countFmt(valid.length);
+      $("total-note").textContent = `${countFmt(rows.length)} analysis rows · ${invalid} invalid/missing churn labels excluded`;
+      $("rate").textContent = pctFmt(overall);
+      $("churn-count").textContent = `${countFmt(churned)} churned · ${countFmt(retained)} retained`;
+      $("risk").textContent = formatMoney(lostMonthly);
+      $("risk-share").textContent = allMonthly ? `${pctFmt(lostMonthly / allMonthly)} of recorded monthly charges` : "Monthly charges unavailable";
+      $("avg").textContent = formatMoney(average);
+      $("avg-note").textContent = `${countFmt(monthlyRows.length)} customers with numeric monthly charges`;
+      $("auditRows").textContent = countFmt(parsedRows.length);
+      $("auditDuplicates").textContent = countFmt(duplicateCount);
+      $("auditInvalid").textContent = countFmt(invalid);
+      $("auditMissing").textContent = countFmt(missingCells);
+      $("file-meta").textContent = `${countFmt(parsedRows.length)} raw rows · ${headers.length} columns`;
+      $("cleaningLog").innerHTML = [
+        `${$("dedupeToggle")?.checked ? `Removed ${countFmt(duplicateCount)} exact duplicate row(s) from the analysis copy;` : `Found ${countFmt(duplicateCount)} exact duplicate row(s), retained by choice;`} the original file remains unchanged.`,
+        `${countFmt(invalid)} row(s) with missing or unrecognized churn labels excluded from churn-rate denominators.`,
+        columns.monthly ? `${countFmt(rows.length - rows.filter((row) => Number.isFinite(row._monthly)).length)} row(s) have blank or non-numeric monthly charges; excluded only from charge calculations.` : "Monthly-charge field not mapped; revenue exposure and charge charts are unavailable.",
+        `Recognized churn labels: Yes/Y/True/1/Churned and No/N/False/0/Retained/Active. Other labels are not silently treated as retained.`
+      ].map((text) => `<li>${safeText(text)}</li>`).join("");
+      renderSplit(valid.length, churned, retained, overall);
+      const tenureStats = columns.tenure
+        ? groupStats(rows.map((row) => ({ ...row, _tenureBand: tenureGroup(row._tenure) })).filter((row) => row._tenureBand), "_tenureBand")
+        : [];
+      renderRateChart("tenureChart", "tenure-note", tenureStats, overall, "No usable tenure column detected.");
+      renderRateChart("contractChart", "contract-note", groupStats(rows, columns.contract), overall, "No contract column detected.");
+      renderRateChart("paymentChart", "payment-note", groupStats(rows, columns.payment), overall, "No payment-method column detected.");
+      renderRateChart("internetChart", "internet-note", groupStats(rows, columns.internet), overall, "No internet-service column detected.");
+      renderRateChart("paperlessChart", "paperless-note", groupStats(rows, columns.paperless), overall, "No paperless-billing column detected.");
+      renderCharges(rows, columns);
+      renderTotalCharges(rows, columns);
+      renderAddons(rows, headers);
+      renderProfile(rows, columns.gender, "genderChart", "gender-note", "Gender");
+      renderProfile(rows, columns.senior, "seniorChart", "senior-note", "Senior citizen");
+      renderProfile(rows, columns.partner, "partnerChart", "partner-note", "Partner");
+      renderProfile(rows, columns.dependents, "dependentsChart", "dependents-note", "Dependents");
+      renderCorrelation(rows, columns);
+      const segments = renderRiskTable(rows, columns, overall);
+      renderInsights(rows, columns, overall, segments);
+      setStatus(`Analysis ready · ${countFmt(valid.length)} customers with recognized churn labels`, "ready");
+    }
+
+    $("file").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setError("");
+      setStatus(`Reading ${file.name}…`);
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: "greedy",
+        dynamicTyping: false,
+        transformHeader: (header) => header.trim(),
+        complete: (result) => {
+          if (result.errors.length) {
+            setError(`CSV parsing found ${result.errors.length} issue(s): ${result.errors[0].message}`);
+          }
+          parsedRows = result.data.filter((row) => Object.values(row).some((value) => String(value ?? "").trim() !== ""));
+          if (!parsedRows.length) {
+            setError("This CSV has headers but no usable data rows.");
+            setStatus("No customer rows found.", "error");
+            return;
+          }
+          const headers = Object.keys(parsedRows[0] || {});
+          ensureFieldControls(headers);
+          addDedupeToggle();
+          processRows();
+        },
+        error: (error) => {
+          setError(`Could not read the CSV: ${error.message}`);
+          setStatus("CSV could not be read.", "error");
+        }
+      });
+    });
+
+    function addDedupeToggle() {
+      if ($("dedupeToggle")) return;
+      const host = $("fieldControls");
+      if (!host) return;
+      const label = document.createElement("label");
+      label.style.cssText = "grid-column:1/-1;display:flex;align-items:center;gap:7px;color:#59647a;font-size:10px";
+      const checkbox = document.createElement("input");
+      checkbox.id = "dedupeToggle";
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.addEventListener("change", processRows);
+      const text = document.createElement("span");
+      text.textContent = "Remove exact duplicate rows from the analysis copy (recommended; raw upload is unchanged)";
+      label.append(checkbox, text);
+      host.appendChild(label);
+    }
+
+    $("currency").addEventListener("change", (event) => {
+      activeCurrency = event.target.value;
+      if (activeDataset) processRows();
+    });
+
+    $("themeToggle").addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme || "light";
+      setTheme(current === "dark" ? "light" : "dark");
+    });
+    setTheme(initialTheme(), false);
+
+    $("download").addEventListener("click", () => {
+      if (!activeDataset) return;
+      const { rows, columns } = activeDataset;
+      const output = rows.map((row) => {
+        const copy = {};
+        Object.entries(row).forEach(([key, value]) => {
+          if (!key.startsWith("_")) copy[key] = value;
+        });
+        copy.churn_binary = row._churn;
+        if (columns.monthly) copy.monthly_charges_numeric = Number.isFinite(row._monthly) ? row._monthly : "";
+        if (columns.tenure) copy.tenure_months_numeric = Number.isFinite(row._tenure) ? row._tenure : "";
+        return copy;
+      });
+      const csv = Papa.unparse(output);
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "customer_churn_analysis_copy.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+<script>const f=new File(['customerID,Churn,tenure,Contract,PaymentMethod,PaperlessBilling,InternetService,MonthlyCharges,TotalCharges,gender,SeniorCitizen,Partner,Dependents,OnlineSecurity,OnlineBackup,DeviceProtection,TechSupport,StreamingTV,StreamingMovies\nC000,Yes,1,Month-to-month,Electronic check,No,Fiber optic,50,50,Male,1,No,Yes,No,Yes,No,No,Yes,No\nC001,Yes,2,Month-to-month,Electronic check,Yes,Fiber optic,51,102,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC002,Yes,3,Month-to-month,Electronic check,No,Fiber optic,52,156,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC003,Yes,4,Month-to-month,Electronic check,Yes,Fiber optic,53,212,Female,1,Yes,No,No,Yes,No,No,Yes,No\nC004,Yes,5,Month-to-month,Electronic check,No,Fiber optic,54,270,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC005,Yes,6,Month-to-month,Electronic check,Yes,Fiber optic,55,330,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC006,Yes,7,Month-to-month,Electronic check,No,Fiber optic,56,392,Male,1,No,Yes,No,Yes,No,No,Yes,No\nC007,Yes,8,Month-to-month,Electronic check,Yes,Fiber optic,57,456,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC008,Yes,9,Month-to-month,Electronic check,No,Fiber optic,58,522,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC009,Yes,10,Month-to-month,Electronic check,Yes,Fiber optic,59,590,Female,1,Yes,No,No,Yes,No,No,Yes,No\nC010,Yes,11,Month-to-month,Electronic check,No,Fiber optic,60,660,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC011,Yes,12,Month-to-month,Electronic check,Yes,Fiber optic,61,732,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC012,Yes,1,Month-to-month,Electronic check,No,Fiber optic,62,62,Male,1,No,Yes,No,Yes,No,No,Yes,No\nC013,Yes,2,Month-to-month,Electronic check,Yes,Fiber optic,63,126,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC014,Yes,3,Month-to-month,Electronic check,No,Fiber optic,64,192,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC015,Yes,4,Month-to-month,Electronic check,Yes,Fiber optic,65,260,Female,1,Yes,No,No,Yes,No,No,Yes,No\nC016,Yes,5,Month-to-month,Electronic check,No,Fiber optic,66,330,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC017,Yes,6,Month-to-month,Electronic check,Yes,Fiber optic,67,402,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC018,Yes,7,Month-to-month,Electronic check,No,Fiber optic,68,476,Male,1,No,Yes,No,Yes,No,No,Yes,No\nC019,Yes,8,Month-to-month,Electronic check,Yes,Fiber optic,69,552,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC020,Yes,9,Month-to-month,Electronic check,No,Fiber optic,70,630,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC021,Yes,10,Month-to-month,Electronic check,Yes,Fiber optic,71,710,Female,1,Yes,No,No,Yes,No,No,Yes,No\nC022,Yes,11,Month-to-month,Electronic check,No,Fiber optic,72,792,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC023,Yes,12,Month-to-month,Electronic check,Yes,Fiber optic,73,876,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC024,Yes,1,Month-to-month,Electronic check,No,Fiber optic,74,74,Male,1,No,Yes,No,Yes,No,No,Yes,No\nC025,Yes,2,Month-to-month,Electronic check,Yes,Fiber optic,75,150,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC026,Yes,3,Month-to-month,Electronic check,No,Fiber optic,76,228,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC027,Yes,4,Month-to-month,Electronic check,Yes,Fiber optic,77,308,Female,1,Yes,No,No,Yes,No,No,Yes,No\nC028,Yes,5,Month-to-month,Electronic check,No,Fiber optic,78,390,Male,0,No,Yes,No,Yes,No,No,Yes,No\nC029,Yes,6,Month-to-month,Electronic check,Yes,Fiber optic,79,474,Female,0,Yes,No,No,Yes,No,No,Yes,No\nC030,No,54,Two year,Credit card,No,DSL,80,4320,Male,1,No,Yes,Yes,Yes,No,Yes,Yes,No\nC031,No,55,One year,Credit card,Yes,DSL,81,4455,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC032,No,56,Two year,Credit card,No,DSL,82,4592,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC033,No,57,One year,Credit card,Yes,DSL,83,4731,Female,1,Yes,No,Yes,Yes,No,Yes,Yes,No\nC034,No,58,Two year,Credit card,No,DSL,84,4872,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC035,No,59,One year,Credit card,Yes,DSL,85,5015,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC036,No,60,Two year,Credit card,No,DSL,86,5160,Male,1,No,Yes,Yes,Yes,No,Yes,Yes,No\nC037,No,61,One year,Credit card,Yes,DSL,87,5307,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC038,No,62,Two year,Credit card,No,DSL,88,5456,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC039,No,63,One year,Credit card,Yes,DSL,89,5607,Female,1,Yes,No,Yes,Yes,No,Yes,Yes,No\nC040,No,64,Two year,Credit card,No,DSL,50,3200,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC041,No,65,One year,Credit card,Yes,DSL,51,3315,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC042,No,66,Two year,Credit card,No,DSL,52,3432,Male,1,No,Yes,Yes,Yes,No,Yes,Yes,No\nC043,No,67,One year,Credit card,Yes,DSL,53,3551,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC044,No,68,Two year,Credit card,No,DSL,54,3672,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC045,No,69,One year,Credit card,Yes,DSL,55,3795,Female,1,Yes,No,Yes,Yes,No,Yes,Yes,No\nC046,No,70,Two year,Credit card,No,DSL,56,3920,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC047,No,71,One year,Credit card,Yes,DSL,57,4047,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC048,No,24,Two year,Credit card,No,DSL,58,1392,Male,1,No,Yes,Yes,Yes,No,Yes,Yes,No\nC049,No,25,One year,Credit card,Yes,DSL,59,1475,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC050,No,26,Two year,Credit card,No,DSL,60,1560,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC051,No,27,One year,Credit card,Yes,DSL,61,1647,Female,1,Yes,No,Yes,Yes,No,Yes,Yes,No\nC052,No,28,Two year,Credit card,No,DSL,62,1736,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC053,No,29,One year,Credit card,Yes,DSL,63,1827,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC054,No,30,Two year,Credit card,No,DSL,64,1920,Male,1,No,Yes,Yes,Yes,No,Yes,Yes,No\nC055,No,31,One year,Credit card,Yes,DSL,65,2015,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No\nC056,No,32,Two year,Credit card,No,DSL,66,2112,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC057,No,33,One year,Credit card,Yes,DSL,67,2211,Female,1,Yes,No,Yes,Yes,No,Yes,Yes,No\nC058,No,34,Two year,Credit card,No,DSL,68,2312,Male,0,No,Yes,Yes,Yes,No,Yes,Yes,No\nC059,No,35,One year,Credit card,Yes,DSL,69,2415,Female,0,Yes,No,Yes,Yes,No,Yes,Yes,No'],"smoke.csv",{type:"text/csv"});const d=new DataTransfer();d.items.add(f);const u=document.getElementById("file");u.files=d.files;u.dispatchEvent(new Event("change",{bubbles:true}));setTimeout(()=>document.getElementById("themeToggle").click(),700);</script></body>
+</html>
